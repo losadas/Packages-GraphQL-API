@@ -1,0 +1,28 @@
+{
+  "name": "package-management",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "start": "node server/app.js",
+    "dev": "nodemon server/app.js"
+  },
+  "keywords": [],
+  "author": "Santiago Losada",
+  "license": "ISC",
+  "devDependencies": {
+    "dotenv": "^16.0.3",
+    "nodemon": "^2.0.22"
+  },
+  "dependencies": {
+    "bcrypt": "5.0.0",
+    "colors": "^1.4.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-graphql": "^0.12.0",
+    "graphql": "^15.8.0",
+    "graphql-date": "^1.0.3",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^7.1.0"
+  }
+}
