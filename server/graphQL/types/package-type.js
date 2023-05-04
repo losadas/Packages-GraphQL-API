@@ -33,7 +33,7 @@ const PackageType = new GraphQLObjectType({
     nitDest: { type: GraphQLString },
     status: { type: GraphQLString },
     client: {
-      type: require('./client-type').ClientType, // GraphQL Type
+      type: require('./client-types').ClientType, // GraphQL Type
       resolve(parent, args) {
         return Client.findById(parent.clientID)
       }

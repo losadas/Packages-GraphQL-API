@@ -1,29 +1,19 @@
-const { ClientType } = require('../types/client-type') // GraphQL Type
+const { ClientType } = require('../types/client-types') // GraphQL Type
 const Client = require('../../models/client') // Mongoose Model
-const { GraphQLID, GraphQLList, GraphQLString } = require('graphql') // GraphQL library
-const jwt = require('jsonwebtoken')
-
-function verifyToken(token) {
-  try {
-    const decoded = jwt.verify(token, process.env.TOKEN_SECRET)
-    return decoded
-  } catch (err) {
-    return null
-  }
-}
+const { GraphQLList } = require('graphql') // GraphQL library
+const { isLoggedIn } = require('../helpers/verifications-token') // Auth library
 
 // Client Queries
 const clientQueries = {
+  // Get client logged in
   client: {
     type: ClientType,
     resolve(parent, args, context) {
-      const isloggedIn = verifyToken(context.token)
-      if (!isloggedIn) {
-        throw new Error('Unauthorized')
-      }
-      return Client.findById(isloggedIn._id)
+      return Client.findById(isLoggedIn(context.token)._id)
     }
   },
+
+  // Get all clients (for testing purposes)
   clients: {
     type: new GraphQLList(ClientType),
     resolve(parent, args) {
