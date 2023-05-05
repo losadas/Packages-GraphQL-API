@@ -9,7 +9,8 @@ const clientQueries = {
   client: {
     type: ClientType,
     resolve(parent, args, context) {
-      return Client.findById(isLoggedIn(context.token)._id)
+      const currentClient = isLoggedIn(context.token)
+      return Client.findById(currentClient._id)
     }
   },
 

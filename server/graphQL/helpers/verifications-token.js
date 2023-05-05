@@ -16,9 +16,7 @@ const createToken = (id) => {
 
 const isLoggedIn = (token) => {
   const isLoggedIn = verifyToken(token)
-  if (!isLoggedIn) {
-    throw new Error('Unauthorized')
-  }
+  if (!isLoggedIn) throw new Error('Unauthorized')
   return isLoggedIn
 }
 
