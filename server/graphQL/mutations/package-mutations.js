@@ -1,132 +1,143 @@
 const Package = require('../../models/package') // Mongoose Model
-const { PackageType } = require('../types/package-type') // GraphQL Type
 const {
-  GraphQLString,
-  GraphQLID,
-  GraphQLNonNull,
-  GraphQLEnumType,
-  GraphQLInputObjectType
-} = require('graphql') // GraphQL library
+  PackageType,
+  PackageInputType,
+  PackageUpdateInputType,
+  UpdatePackageOutputType,
+  DeletePackageOutputType,
+  DeletePackagesOutputType,
+  DeleteAllPackagesOutputType
+} = require('../types/package-type') // GraphQL Type
+const { GraphQLID, GraphQLNonNull } = require('graphql') // GraphQL library
+const { isLoggedIn } = require('../helpers/verifications-token') // Auth library
 
 // Project Mutations
 const packageMutations = {
-  // Add Project
+  // Add package
   addPackage: {
     type: PackageType,
     args: {
-      specs: {
-        type: new GraphQLInputObjectType({
-          name: 'Specs',
-          fields: () => ({
-            large: { type: GraphQLString },
-            width: { type: GraphQLString },
-            height: { type: GraphQLString },
-            weight: { type: GraphQLString }
-          })
-        })
-      },
-      date: { type: GraphQLNonNull(GraphQLString) },
-      time: { type: GraphQLNonNull(GraphQLString) },
-      pickCity: { type: GraphQLNonNull(GraphQLString) },
-      pickAddress: { type: GraphQLNonNull(GraphQLString) },
-      destCity: { type: GraphQLNonNull(GraphQLString) },
-      destAddress: { type: GraphQLNonNull(GraphQLString) },
-      nameDest: { type: GraphQLNonNull(GraphQLString) },
-      nitDest: { type: GraphQLNonNull(GraphQLString) },
-      status: {
-        type: new GraphQLEnumType({
-          name: 'PackageStatus',
-          values: {
-            new: { value: 'Saved' },
-            cancel: { value: 'Canceled' },
-            completed: { value: 'Completed' }
-          }
-        }),
-        defaultValue: 'Saved'
-      },
-      clientID: { type: GraphQLNonNull(GraphQLID) }
+      input: { type: new GraphQLNonNull(PackageInputType) }
     },
-    resolve(parent, args) {
-      const package = new Package({
-        specs: args.specs,
-        date: args.date,
-        time: args.time,
-        pickCity: args.pickCity,
-        pickAddress: args.pickAddress,
-        destCity: args.destCity,
-        destAddress: args.destAddress,
-        nameDest: args.nameDest,
-        nitDest: args.nitDest,
-        status: args.status,
-        clientID: args.clientID
-      })
-      return package.save() // Save project to database
-    }
-  },
-
-  // Update Project
-  updatePackage: {
-    type: PackageType,
-    args: {
-      id: { type: GraphQLNonNull(GraphQLID) },
-      specs: {
-        type: new GraphQLInputObjectType({
-          name: 'UpdateSpecs',
-          fields: () => ({
-            large: { type: GraphQLString },
-            width: { type: GraphQLString },
-            height: { type: GraphQLString },
-            weight: { type: GraphQLString }
-          })
+    resolve: async (parent, args, context) => {
+      const currentClient = isLoggedIn(context.token)
+      try {
+        const newPackage = new Package({
+          specs: args.input.specs,
+          date: args.input.date,
+          time: args.input.time,
+          pickCity: args.input.pickCity,
+          pickAddress: args.input.pickAddress,
+          destCity: args.input.destCity,
+          destAddress: args.input.destAddress,
+          nameDest: args.input.nameDest,
+          nitDest: args.input.nitDest,
+          status: args.input.status,
+          clientID: currentClient._id
         })
-      },
-      date: { type: GraphQLString },
-      time: { type: GraphQLString },
-      pickCity: { type: GraphQLString },
-      pickAddress: { type: GraphQLString },
-      destCity: { type: GraphQLString },
-      destAddress: { type: GraphQLString },
-      nameDest: { type: GraphQLString },
-      nitDest: { type: GraphQLString },
-      status: {
-        type: new GraphQLEnumType({
-          name: 'PackageStatusUpdate',
-          values: {
-            new: { value: 'Saved' },
-            cancel: { value: 'Canceled' },
-            completed: { value: 'Completed' }
-          }
-        })
+        const savedPackage = await newPackage.save()
+        if (!savedPackage) throw new Error('Error saving package to database')
+        return savedPackage
+      } catch (error) {
+        throw new Error('Error saving package: ' + error.message)
       }
-    },
-    resolve(parent, args) {
-      return Package.findByIdAndUpdate(
-        args.id,
-        {
-          specs: args.specs,
-          date: args.date,
-          time: args.time,
-          pickCity: args.pickCity,
-          pickAddress: args.pickAddress,
-          destCity: args.destCity,
-          destAddress: args.destAddress,
-          nameDest: args.nameDest,
-          nitDest: args.nitDest,
-          status: args.status
-        },
-        { new: true }
-      )
     }
   },
 
-  // Delete Project
+  // Update package
+  updatePackage: {
+    type: UpdatePackageOutputType,
+    args: {
+      input: { type: PackageUpdateInputType }
+    },
+    resolve: async (parent, args, context) => {
+      // Check if client is logged in
+      const currentClient = isLoggedIn(context.token)
+      try {
+        if (!args.input || Object.keys(args.input).length === 0)
+          return { success: true, message: 'Anything to update' }
+        const updatedPackage = await Package.findOneAndUpdate(
+          { clientID: currentClient._id, _id: args.input.id },
+          {
+            specs: args.input.specs,
+            date: args.input.date,
+            time: args.input.time,
+            pickCity: args.input.pickCity,
+            pickAddress: args.input.pickAddress,
+            destCity: args.input.destCity,
+            destAddress: args.input.destAddress,
+            nameDest: args.input.nameDest,
+            nitDest: args.input.nitDest,
+            status: args.input.status
+          },
+          { new: true }
+        )
+        if (!updatedPackage)
+          throw new Error('Error updating package to database')
+        return { success: true, message: 'Package updated successfully' }
+      } catch (error) {
+        throw new Error('Error updating package: ' + error.message)
+      }
+    }
+  },
+
+  // Delete package
   deletePackage: {
-    type: PackageType,
+    type: DeletePackageOutputType,
     args: {
       id: { type: GraphQLNonNull(GraphQLID) }
     },
-    resolve(parent, args) {
-      return Package.findByIdAndDelete(args.id) // Delete project
+    resolve: async (parent, args, context) => {
+      // Check if client is logged in
+      const currentCLient = isLoggedIn(context.token)
+      try {
+        const deletedPackage = await Package.findOneAndDelete({
+          clientID: currentCLient._id,
+          _id: args.id
+        })
+        if (!deletedPackage)
+          throw new Error('Error deleting package from database')
+        return { success: true, message: 'Package deleted successfully' }
+      } catch (error) {
+        throw new Error('Error deleting package: ' + error.message)
+      }
+    }
+  },
+
+  // Delete all packages of a client
+  deletePackages: {
+    type: DeletePackagesOutputType,
+    args: {
+      id: { type: GraphQLNonNull(GraphQLID) }
+    },
+    resolve: async (parent, args, context) => {
+      // Check if client is logged in
+      const currentCLient = isLoggedIn(context.token)
+      try {
+        const deletedPackages = await Package.deleteMany({
+          clientID: currentCLient._id
+        }).exec()
+        if (!deletedPackages)
+          throw new Error('Error deleting packages from database')
+        return { success: true, message: 'Packages deleted successfully' }
+      } catch (error) {
+        throw new Error('Error deleting packages: ' + error.message)
+      }
+    }
+  },
+
+  // Delete all packages of all clients (for testing purposes)
+  deleteAllPackages: {
+    type: DeleteAllPackagesOutputType,
+    resolve: async () => {
+      try {
+        const deletedPackages = await Package.deleteMany({}).exec()
+        if (!deletedPackages)
+          throw new Error('Error deleting all packages from database')
+        return { success: true, message: 'All packages deleted successfully' }
+      } catch (error) {
+        throw new Error('Error deleting all packages: ' + error.message)
+      }
     }
   }
 }

@@ -1,4 +1,5 @@
 const express = require('express') // Express library
+const cors = require('cors') // CORS library
 const colors = require('colors') // Console colors
 require('dotenv').config() // Environment variables
 const schema = require('./graphQL/schema/schema') // GraphQL Schema
@@ -7,7 +8,12 @@ const { connectDB, mongoose } = require('./config/db') // MongoDB connection
 const port = process.env.PORT || 5000 // Port
 
 const app = express() // Initialize Express
-
+// Enable CORS
+app.use(
+  cors({
+    origin: 'http://localhost:5000'
+  })
+)
 // Connect to database
 connectDB()
 
@@ -17,7 +23,7 @@ app.use(
   graphqlHTTP({
     schema,
     graphiql: process.env.NODE_ENV === 'development', // Enable GraphiQL in development,
-    context: {token: ""}
+    context: { token: '' }
   })
 )
 

@@ -76,6 +76,8 @@ const DeleteClientOutputType = UpdateClientOutputType
 
 const DeleteAllClientsOutputType = DeleteClientOutputType
 
+const LogoutOutputType = UpdateClientOutputType
+
 module.exports = {
   ClientType,
   LoginInputType,
@@ -85,5 +87,6 @@ module.exports = {
   UpdateClientOutputType,
   UpdateClientInputType,
   DeleteClientOutputType,
-  DeleteAllClientsOutputType
+  DeleteAllClientsOutputType,
+  LogoutOutputType
 }

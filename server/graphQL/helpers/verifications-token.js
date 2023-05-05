@@ -10,14 +10,22 @@ const verifyToken = (token) => {
 }
 
 const createToken = (id) => {
-  const token = jwt.sign({ _id: id }, process.env.TOKEN_SECRET)
-  return token
+  try {
+    const token = jwt.sign({ _id: id }, process.env.TOKEN_SECRET)
+    return token
+  } catch (error) {
+    throw new Error('Error creating token: ' + error.message)
+  }
 }
 
 const isLoggedIn = (token) => {
-  const isLoggedIn = verifyToken(token)
-  if (!isLoggedIn) throw new Error('Unauthorized')
-  return isLoggedIn
+  try {
+    const isLoggedIn = verifyToken(token)
+    if (!isLoggedIn) throw new Error('Unauthorized')
+    return isLoggedIn
+  } catch (error) {
+    throw new Error('Error verifying token: ' + error.message)
+  }
 }
 
 module.exports = {

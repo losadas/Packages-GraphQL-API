@@ -1,39 +1,46 @@
 const { PackageType } = require('../types/package-type') // GraphQL Type
 const Package = require('../../models/package') // Mongoose Model
-const { GraphQLID, GraphQLList, GraphQLString } = require('graphql') // GraphQL library
-const jwt = require('jsonwebtoken')
-
-function verifyToken(token) {
-  try {
-    const decoded = jwt.verify(token, process.env.TOKEN_SECRET)
-    return decoded
-  } catch (err) {
-    return null
-  }
-}
+const { GraphQLID, GraphQLList } = require('graphql') // GraphQL library
+const { isLoggedIn } = require('../helpers/verifications-token') // Auth library
 
 // Project Queries
 const packageQueries = {
   package: {
     type: PackageType,
-    args: { id: { type: GraphQLID }, token: { type: GraphQLString} },
-    resolve(parent, args) {
-      const loggedIn = verifyToken(args.token)
-      if (!loggedIn) {
-        throw new Error('Unauthorized')
+    args: { id: { type: GraphQLID } },
+    resolve: async (parent, args, context) => {
+      // Check if client is logged in
+      const currentClient = isLoggedIn(context.token)
+      try {
+        const packageFound = await Package.findOne({
+          clientID: currentClient._id,
+          _id: args.id
+        }).exec()
+        if (!packageFound) {
+          throw new Error('Package not found')
+        }
+        return packageFound
+      } catch (error) {
+        throw new Error('Error fetching package: ' + error.message)
       }
-      return Package.findById(args.id)
     }
   },
   packages: {
     type: new GraphQLList(PackageType),
-    args: { token: { type: GraphQLString}},
-    resolve(parent, args) {
-      const loggedIn = verifyToken(args.token)
-      if (!loggedIn) {
-        throw new Error('Unauthorized')
+    resolve: async (parent, args, context) => {
+      // Check if client is logged in
+      const currentClient = isLoggedIn(context.token)
+      try {
+        const packagesFound = await Package.find({
+          clientID: currentClient._id
+        }).exec()
+        if (!packagesFound) {
+          throw new Error('This client does not have packages')
+        }
+        return packagesFound
+      } catch (error) {
+        throw new Error('Error fetching packages: ' + error.message)
       }
-      return Package.find({})
     }
   }
 }
