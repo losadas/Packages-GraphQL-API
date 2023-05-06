@@ -1,4 +1,5 @@
 const express = require('express') // Express library
+const statusUpdater = require('./graphQL/helpers/statusUpdater') // Status updater
 const cors = require('cors') // CORS library
 const colors = require('colors') // Console colors
 require('dotenv').config() // Environment variables
@@ -11,19 +12,18 @@ const app = express() // Initialize Express
 // Enable CORS
 app.use(
   cors({
-    origin: 'http://localhost:5000'
+    origin: 'http://localhost:500'
   })
 )
 // Connect to database
 connectDB()
-
+statusUpdater()
 // Middleware for GraphQL
 app.use(
   '/graphql',
   graphqlHTTP({
     schema,
-    graphiql: process.env.NODE_ENV === 'development', // Enable GraphiQL in development,
-    context: { token: '' }
+    graphiql: process.env.NODE_ENV === 'development' // Enable GraphiQL in development,
   })
 )
 

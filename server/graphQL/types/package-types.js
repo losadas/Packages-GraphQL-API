@@ -7,7 +7,6 @@ const {
   GraphQLEnumType,
   GraphQLBoolean
 } = require('graphql') // GraphQL library
-const Client = require('../../models/client') // Mongoose Model
 
 // Specs Type
 const Specs = new GraphQLObjectType({
@@ -34,29 +33,24 @@ const PackageType = new GraphQLObjectType({
     destAddress: { type: GraphQLString },
     nameDest: { type: GraphQLString },
     nitDest: { type: GraphQLString },
-    status: { type: GraphQLString },
-    client: {
-      type: require('./client-types').ClientType, // GraphQL Type
-      resolve(parent, args) {
-        return Client.findById(parent.clientID)
-      }
-    }
+    status: { type: GraphQLString }
   })
 })
 
+const SpecsInput = new GraphQLInputObjectType({
+  name: 'InputSpecs',
+  fields: () => ({
+    large: { type: GraphQLNonNull(GraphQLString) },
+    width: { type: GraphQLNonNull(GraphQLString) },
+    height: { type: GraphQLNonNull(GraphQLString) },
+    weight: { type: GraphQLNonNull(GraphQLString) }
+  })
+})
 const PackageInputType = new GraphQLInputObjectType({
   name: 'PackageInput',
   fields: () => ({
     specs: {
-      type: new GraphQLInputObjectType({
-        name: 'InputSpecs',
-        fields: () => ({
-          large: { type: GraphQLNonNull(GraphQLString) },
-          width: { type: GraphQLNonNull(GraphQLString) },
-          height: { type: GraphQLNonNull(GraphQLString) },
-          weight: { type: GraphQLNonNull(GraphQLString) }
-        })
-      })
+      type: new GraphQLNonNull(SpecsInput)
     },
     date: { type: GraphQLNonNull(GraphQLString) },
     time: { type: GraphQLNonNull(GraphQLString) },

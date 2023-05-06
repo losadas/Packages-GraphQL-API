@@ -26,7 +26,7 @@ const clientMutations = {
     resolve: async (parent, { input: { name, email, password } }, context) => {
       try {
         // Check if a client is already logged in
-        if (context.token)
+        if (context.headers.authorization)
           throw new Error('A user is already logged in, please log out first')
         // Validate email and password and check if client already exists
         const emailRegex = /^\S+@\S+\.\S+$/
@@ -65,8 +65,11 @@ const clientMutations = {
 
         // Create token
         const token = createToken(newClient._id)
-        context.token = token
-        return { success: true, message: 'Register Succesful', token: token }
+        return {
+          success: true,
+          message: 'Register Successful',
+          token: token
+        }
       } catch (error) {
         throw new Error('Register Failed: ' + error.message)
       }
@@ -81,18 +84,33 @@ const clientMutations = {
     },
     resolve: async (parent, args, context) => {
       // Check if client is logged in
-      const currentClient = isLoggedIn(context.token)
+      const currentClient = isLoggedIn(context.headers.authorization)
       try {
         // Check if there is anything to update
         if (!args.input || Object.keys(args.input).length === 0)
           return { success: true, message: 'Anything to update' }
+
+        // Check if existing email in input is valid and not already in use
+        if (args.input.email) {
+          const emailRegex = /^\S+@\S+\.\S+$/
+          if (!emailRegex.test(args.input.email))
+            throw new Error(
+              'Please enter a valid email address : example@example.com'
+            )
+
+          const existingClient = await Client.findOne({
+            email: args.input.email
+          }).exec()
+          if (existingClient)
+            throw new Error('This email address is already in use')
+        }
 
         // Hash password if it exists
         if (args.input.password) {
           const passwordRegex =
             /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}$/
 
-          if (!passwordRegex.test(password))
+          if (!passwordRegex.test(args.input.password))
             throw new Error(
               'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one digit, and one special character (!@#$%^&*)'
             )
@@ -113,7 +131,7 @@ const clientMutations = {
         )
         if (!updatedClient)
           throw new Error('Failed to update client in the database')
-        return { success: true, message: 'CLient updated succesful' }
+        return { success: true, message: 'Client updated successfully' }
       } catch (error) {
         throw new Error('Update Failed: ' + error.message)
       }
@@ -125,7 +143,7 @@ const clientMutations = {
     type: DeleteClientOutputType,
     resolve: async (parent, args, context) => {
       // Check if client is logged in
-      const currentClient = isLoggedIn(context.token)
+      const currentClient = isLoggedIn(context.headers.authorization)
       try {
         const deletedPackages = await Package.find({
           clientID: currentClient._id
@@ -136,7 +154,11 @@ const clientMutations = {
           throw new Error('Failed to delete packages related to client')
         const deletedClient = await Client.findByIdAndDelete(currentClient._id) // Delete client
         if (!deletedClient) throw new Error('Failed to delete client')
-        return { success: true, message: 'Client and packages related deleted' }
+        return {
+          success: true,
+          message: 'Client and packages related deleted',
+          token: null
+        }
       } catch (error) {
         throw new Error('Delete Failed: ' + error.message)
       }
@@ -152,7 +174,7 @@ const clientMutations = {
     resolve: async (parent, { input: { email, password } }, context) => {
       try {
         // Check if a client is already logged in
-        if (context.token)
+        if (context.headers.authorization)
           throw new Error('A user is already logged in, please log out first')
         // Check if client exists
         const client = await Client.findOne({ email }).exec()
@@ -164,8 +186,11 @@ const clientMutations = {
 
         // Create and assign token
         const token = createToken(client._id)
-        context.token = token
-        return { success: true, message: 'Login Succesful', token: token }
+        return {
+          success: true,
+          message: 'Login Successful',
+          token: token
+        }
       } catch (error) {
         throw new Error('Login Failed: ' + error.message)
       }
@@ -177,10 +202,11 @@ const clientMutations = {
     resolve: async (parent, args, context) => {
       try {
         // Verify user is authenticated
-        if (!context.token) throw new Error('User is not logged in')
+        if (!context.headers.authorization)
+          throw new Error('User is not logged in')
         // Clear token
-        context.token = ''
-        return { success: true, message: 'Logout Succesful' }
+        context.headers.authorization = ''
+        return { success: true, message: 'Logout Successful', token: null }
       } catch (error) {
         throw new Error('Logout Failed: ' + error.message)
       }

@@ -5,11 +5,11 @@ const {
   PackageUpdateInputType,
   UpdatePackageOutputType,
   DeletePackageOutputType,
-  DeletePackagesOutputType,
-  DeleteAllPackagesOutputType
-} = require('../types/package-type') // GraphQL Type
+  DeletePackagesOutputType
+} = require('../types/package-types') // GraphQL Type
 const { GraphQLID, GraphQLNonNull } = require('graphql') // GraphQL library
 const { isLoggedIn } = require('../helpers/verifications-token') // Auth library
+const mongoose = require('mongoose')
 
 // Project Mutations
 const packageMutations = {
@@ -20,7 +20,7 @@ const packageMutations = {
       input: { type: new GraphQLNonNull(PackageInputType) }
     },
     resolve: async (parent, args, context) => {
-      const currentClient = isLoggedIn(context.token)
+      const currentClient = isLoggedIn(context.headers.authorization)
       try {
         const newPackage = new Package({
           specs: args.input.specs,
@@ -48,14 +48,27 @@ const packageMutations = {
   updatePackage: {
     type: UpdatePackageOutputType,
     args: {
-      input: { type: PackageUpdateInputType }
+      input: { type: new GraphQLNonNull(PackageUpdateInputType) }
     },
     resolve: async (parent, args, context) => {
       // Check if client is logged in
-      const currentClient = isLoggedIn(context.token)
+      const currentClient = isLoggedIn(context.headers.authorization)
       try {
-        if (!args.input || Object.keys(args.input).length === 0)
+        const validID = mongoose.Types.ObjectId.isValid(args.input.id)
+        if (!validID) {
+          throw new Error('Invalid ID')
+        }
+        const packageFound = await Package.findOne({
+          clientID: currentClient._id,
+          _id: args.input.id
+        }).exec()
+        if (!packageFound) {
+          throw new Error('Package not found')
+        }
+        if (Object.keys(args.input).length === 1 && args.input.id) {
           return { success: true, message: 'Anything to update' }
+        }
+
         const updatedPackage = await Package.findOneAndUpdate(
           { clientID: currentClient._id, _id: args.input.id },
           {
@@ -85,14 +98,25 @@ const packageMutations = {
   deletePackage: {
     type: DeletePackageOutputType,
     args: {
-      id: { type: GraphQLNonNull(GraphQLID) }
+      id: { type: new GraphQLNonNull(GraphQLID) }
     },
     resolve: async (parent, args, context) => {
       // Check if client is logged in
-      const currentCLient = isLoggedIn(context.token)
+      const currentClient = isLoggedIn(context.headers.authorization)
       try {
+        const validID = mongoose.Types.ObjectId.isValid(args.id)
+        if (!validID) {
+          throw new Error('Invalid ID')
+        }
+        const packageFound = await Package.findOne({
+          clientID: currentClient._id,
+          _id: args.id
+        }).exec()
+        if (!packageFound) {
+          throw new Error('Package not found')
+        }
         const deletedPackage = await Package.findOneAndDelete({
-          clientID: currentCLient._id,
+          clientID: currentClient._id,
           _id: args.id
         })
         if (!deletedPackage)
@@ -107,36 +131,18 @@ const packageMutations = {
   // Delete all packages of a client
   deletePackages: {
     type: DeletePackagesOutputType,
-    args: {
-      id: { type: GraphQLNonNull(GraphQLID) }
-    },
     resolve: async (parent, args, context) => {
       // Check if client is logged in
-      const currentCLient = isLoggedIn(context.token)
+      const currentClient = isLoggedIn(context.headers.authorization)
       try {
         const deletedPackages = await Package.deleteMany({
-          clientID: currentCLient._id
+          clientID: currentClient._id
         }).exec()
         if (!deletedPackages)
           throw new Error('Error deleting packages from database')
         return { success: true, message: 'Packages deleted successfully' }
       } catch (error) {
         throw new Error('Error deleting packages: ' + error.message)
-      }
-    }
-  },
-
-  // Delete all packages of all clients (for testing purposes)
-  deleteAllPackages: {
-    type: DeleteAllPackagesOutputType,
-    resolve: async () => {
-      try {
-        const deletedPackages = await Package.deleteMany({}).exec()
-        if (!deletedPackages)
-          throw new Error('Error deleting all packages from database')
-        return { success: true, message: 'All packages deleted successfully' }
-      } catch (error) {
-        throw new Error('Error deleting all packages: ' + error.message)
       }
     }
   }

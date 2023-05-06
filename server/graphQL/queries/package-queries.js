@@ -1,17 +1,22 @@
-const { PackageType } = require('../types/package-type') // GraphQL Type
+const { PackageType } = require('../types/package-types') // GraphQL Type
 const Package = require('../../models/package') // Mongoose Model
-const { GraphQLID, GraphQLList } = require('graphql') // GraphQL library
+const { GraphQLID, GraphQLList, GraphQLNonNull } = require('graphql') // GraphQL library
 const { isLoggedIn } = require('../helpers/verifications-token') // Auth library
+const mongoose = require('mongoose')
 
 // Project Queries
 const packageQueries = {
   package: {
     type: PackageType,
-    args: { id: { type: GraphQLID } },
+    args: { id: { type: new GraphQLNonNull(GraphQLID) } },
     resolve: async (parent, args, context) => {
       // Check if client is logged in
-      const currentClient = isLoggedIn(context.token)
+      const currentClient = isLoggedIn(context.headers.authorization)
       try {
+        const validID = mongoose.Types.ObjectId.isValid(args.id)
+        if (!validID) {
+          throw new Error('Invalid ID')
+        }
         const packageFound = await Package.findOne({
           clientID: currentClient._id,
           _id: args.id
@@ -29,7 +34,7 @@ const packageQueries = {
     type: new GraphQLList(PackageType),
     resolve: async (parent, args, context) => {
       // Check if client is logged in
-      const currentClient = isLoggedIn(context.token)
+      const currentClient = isLoggedIn(context.headers.authorization)
       try {
         const packagesFound = await Package.find({
           clientID: currentClient._id

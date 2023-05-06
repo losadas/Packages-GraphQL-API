@@ -9,9 +9,9 @@ const clientQueries = {
   client: {
     type: ClientType,
     resolve: async (parent, args, context) => {
-      const currentClient = isLoggedIn(context.token)
+      const currentClient = isLoggedIn(context.headers.authorization)
       try {
-        const client = await Client.findById(currentClient._id)
+        const client = await Client.findById(currentClient._id).exec()
         if (!client) {
           throw new Error('Client not found')
         }
@@ -25,7 +25,7 @@ const clientQueries = {
   // Get all clients (for testing purposes)
   clients: {
     type: new GraphQLList(ClientType),
-    resolve: async (parent, args) => {
+    resolve: async () => {
       try {
         const clients = await Client.find({})
         if (!clients) {

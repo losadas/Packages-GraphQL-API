@@ -7,7 +7,7 @@ const {
   GraphQLBoolean
 } = require('graphql') // GraphQL library
 const Package = require('../../models/package') // Mongoose Model
-const { PackageType } = require('./package-type') // GraphQL Type
+const { PackageType } = require('./package-types') // GraphQL Type
 
 // Client Type
 const ClientType = new GraphQLObjectType({
@@ -17,8 +17,16 @@ const ClientType = new GraphQLObjectType({
     email: { type: GraphQLString },
     packages: {
       type: new GraphQLList(PackageType),
-      resolve(parent, args) {
-        return Package.find({ clientID: parent.id })
+      resolve: async (parent, args) => {
+        try {
+          const packages = await Package.find({ clientID: parent._id }).exec()
+          if (!packages) {
+            throw new Error('Error fetching packages')
+          }
+          return packages
+        } catch (error) {
+          throw new Error('Error fetching packages: ' + error.message)
+        }
       }
     }
   })
@@ -27,10 +35,10 @@ const ClientType = new GraphQLObjectType({
 // Client login input and output types
 const LoginInputType = new GraphQLInputObjectType({
   name: 'LoginInput',
-  fields: {
+  fields: () => ({
     email: { type: new GraphQLNonNull(GraphQLString) },
     password: { type: new GraphQLNonNull(GraphQLString) }
-  }
+  })
 })
 
 const LoginOutputType = new GraphQLObjectType({
@@ -45,11 +53,11 @@ const LoginOutputType = new GraphQLObjectType({
 // Client register input and output types
 const RegisterInputType = new GraphQLInputObjectType({
   name: 'RegisterInput',
-  fields: {
+  fields: () => ({
     name: { type: new GraphQLNonNull(GraphQLString) },
     email: { type: new GraphQLNonNull(GraphQLString) },
     password: { type: new GraphQLNonNull(GraphQLString) }
-  }
+  })
 })
 
 const RegisterOutputType = LoginOutputType
@@ -57,11 +65,11 @@ const RegisterOutputType = LoginOutputType
 // Client update input and output types
 const UpdateClientInputType = new GraphQLInputObjectType({
   name: 'UpdateInput',
-  fields: {
+  fields: () => ({
     name: { type: GraphQLString },
     email: { type: GraphQLString },
     password: { type: GraphQLString }
-  }
+  })
 })
 const UpdateClientOutputType = new GraphQLObjectType({
   name: 'UpdateOutput',
@@ -72,11 +80,11 @@ const UpdateClientOutputType = new GraphQLObjectType({
 })
 
 // Client delete input and output types
-const DeleteClientOutputType = UpdateClientOutputType
+const DeleteClientOutputType = LoginOutputType
 
-const DeleteAllClientsOutputType = DeleteClientOutputType
+const DeleteAllClientsOutputType = UpdateClientOutputType
 
-const LogoutOutputType = UpdateClientOutputType
+const LogoutOutputType = LoginOutputType
 
 module.exports = {
   ClientType,
